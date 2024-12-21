@@ -17,10 +17,14 @@ CORS(app, resources={
     '/api/*': {'origins': origin.scheme + '://' + origin.netloc}
 })
 
+static_dir = Path(app.static_folder)
+product_pics_dir = static_dir / 'products'
+relpath = static_dir.name + '/products/'
+
 @app.route('/api/products/')
 def api_products():
     query = request.args.get('q')
-    if not query:
+    if not query or len(query) < 3:
         return []
 
     name = query.title() if len(query) > 3 else query.upper()
@@ -28,8 +32,10 @@ def api_products():
     if num_items < 1 or num_items > 26:
         return []
 
-    path = Path(app.static_folder) / 'products'
-    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and not f.startswith('.')]
+    files = [f for f in os.listdir(product_pics_dir)
+        if os.path.isfile(os.path.join(product_pics_dir, f))
+        and not f.startswith('.')
+    ]
     files.sort()
 
     hash = hashlib.md5(query.encode()).digest()
@@ -38,8 +44,11 @@ def api_products():
     random.shuffle(files)
 
     products = [{
-        'name' : f[3:].split('.')[0].replace('X', name).replace('_', ' '),
-        'pic' : f,
+        'pic' : relpath + f,
+        'name' : f[3:].split('.')[0]
+            .replace('X', name)
+            .replace(name + '~', name.title())
+            .replace('_', ' '),
     } for f in files[:num_items]]
     products.sort(key=lambda product: product['name'])
     return products
