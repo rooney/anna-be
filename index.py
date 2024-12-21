@@ -1,7 +1,7 @@
 import random, os, hashlib
 from flask import Flask, request
-from flask_cors import CORS, cross_origin
-from urllib.parse import urlparse, urlunparse
+from flask_cors import CORS
+from urllib.parse import urlparse
 from pathlib import Path
 
 app = Flask(__name__)
@@ -18,7 +18,7 @@ CORS(app, resources={
 })
 
 @app.route('/api/products/')
-def api():
+def api_products():
     query = request.args.get('q')
     if not query:
         return []
@@ -28,7 +28,7 @@ def api():
     if num_items < 1 or num_items > 26:
         return []
 
-    path = Path(__file__).parent / 'static/products'
+    path = Path(app.static_folder) / 'products'
     files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and not f.startswith('.')]
     files.sort()
 
