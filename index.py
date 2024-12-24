@@ -18,7 +18,7 @@ CORS(app, resources={
 })
 
 static_dir = Path(app.static_folder)
-product_pics_dir = static_dir / 'products'
+product_images_dir = static_dir / 'products'
 relpath = static_dir.name + '/products/'
 
 @app.route('/api/products/')
@@ -27,13 +27,14 @@ def api_products():
     if not query or len(query) < 3:
         return []
 
+    query = query.strip()
     name = query.title() if len(query) > 3 else query.upper()
     num_items = ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
 
-    files = [f for f in os.listdir(product_pics_dir)
-        if os.path.isfile(os.path.join(product_pics_dir, f))
+    files = [f for f in os.listdir(product_images_dir)
+        if os.path.isfile(os.path.join(product_images_dir, f))
         and not f.startswith('.')
     ]
     files.sort()
@@ -44,7 +45,7 @@ def api_products():
     random.shuffle(files)
 
     products = [{
-        'pic' : relpath + f,
+        'image' : relpath + f,
         'name' : f[3:].split('.')[0]
             .replace('X', name)
             .replace(name + '~', name.title())
