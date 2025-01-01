@@ -48,7 +48,7 @@ def api_products():
 
     query = query.strip()
     name = brandify(query)
-    num_items = ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
+    num_items = 5 if name == 'DHC' else ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
 
