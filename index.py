@@ -21,6 +21,25 @@ static_dir = Path(app.static_folder)
 product_images_dir = static_dir / 'products'
 relpath = static_dir.name + '/products/'
 
+
+def unfilename(filename, name):
+    return filename[3:].split('.')[0] \
+        .replace('X', name) \
+        .replace('~' + name + '~', name.lower()) \
+        .replace(name + '~', name.title()) \
+        .replace('_', ' ')
+
+
+def brandify(name):
+    return name.title() if len(name) > 3 else name.upper()
+
+
+def product(image_filename, product_name):
+    return {
+        'name' : unfilename(image_filename, product_name),
+        'image' : relpath + image_filename,
+    }
+
 @app.route('/api/products/')
 def api_products():
     query = request.args.get('q')
@@ -28,7 +47,7 @@ def api_products():
         return []
 
     query = query.strip()
-    name = query.title() if len(query) > 3 else query.upper()
+    name = brandify(query)
     num_items = ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
@@ -39,18 +58,19 @@ def api_products():
     ]
     files.sort()
 
+    for f in files:
+        template = unfilename(f, '')
+        needle = template.lower().replace('-', ' ')
+        haystack = name.lower().replace('-', ' ')
+        if needle in haystack:
+            name = haystack.replace(needle, '').strip()
+            return [product(f, brandify(name))]
+
     hash = hashlib.md5(query.encode()).digest()
     seed = int.from_bytes(hash)
     random.seed(seed)
     random.shuffle(files)
 
-    products = [{
-        'image' : relpath + f,
-        'name' : f[3:].split('.')[0]
-            .replace('X', name)
-            .replace('~' + name + '~', name.lower())
-            .replace(name + '~', name.title())
-            .replace('_', ' '),
-    } for f in files[:num_items]]
+    products = [product(f, name) for f in files[:num_items]]
     products.sort(key=lambda product: product['name'])
     return products
