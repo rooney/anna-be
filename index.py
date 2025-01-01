@@ -48,6 +48,7 @@ def api_products():
         'image' : relpath + f,
         'name' : f[3:].split('.')[0]
             .replace('X', name)
+            .replace('~' + name + '~', name.lower())
             .replace(name + '~', name.title())
             .replace('_', ' '),
     } for f in files[:num_items]]
