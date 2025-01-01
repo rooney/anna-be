@@ -58,13 +58,14 @@ def api_products():
     ]
     files.sort()
 
+    haystack = name.lower().replace('-', ' ')
     for f in files:
-        template = unfilename(f, '')
-        needle = template.lower().replace('-', ' ')
-        haystack = name.lower().replace('-', ' ')
+        needle = unfilename(f, '').lower().replace('-', ' ')
         if needle in haystack:
-            name = haystack.replace(needle, '').strip()
-            return [product(f, brandify(name))]
+            return [product(f, brandify(haystack.replace(needle, '').strip()))]
+        
+    if ' ' in haystack:
+        return []
 
     hash = hashlib.md5(query.encode()).digest()
     seed = int.from_bytes(hash)
