@@ -26,6 +26,7 @@ def unfilename(filename, name):
     return filename[3:].split('.')[0] \
         .replace('X', name) \
         .replace('~' + name + '~', name.lower()) \
+        .replace('~' + name, name.lower()) \
         .replace(name + '~', name.title()) \
         .replace('_', ' ')
 
@@ -48,7 +49,17 @@ def api_products():
 
     query = query.strip()
     name = brandify(query)
-    num_items = 5 if name == 'DHC' else ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
+
+    if name == 'DHC':
+        return [
+            product('06_X_ \u30b3\u30e9\u30fc\u30b1\u3099\u30f3.webp', 'DHC  \u30b3\u30e9\u30fc\u30b1\u3099\u30f3'),
+            product('09_X_\u30de\u30ab.webp', 'DHC  \u30de\u30ab'),
+            product('13_X-B.webp', 'DHC-B'),
+            product('59_X-C.webp', 'DHC-C'),
+            product('33_X-D.webp', 'DHC-D'),
+        ]
+
+    num_items = ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
 
