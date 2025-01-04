@@ -23,7 +23,7 @@ relpath = static_dir.name + '/products/'
 
 
 def unfilename(filename, name):
-    return filename[3:].split('.')[0] \
+    return filename[4:].split('.')[0] \
         .replace('X', name) \
         .replace('~' + name + '~', name.lower()) \
         .replace('~' + name, name.lower()) \
