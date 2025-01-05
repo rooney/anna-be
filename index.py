@@ -52,11 +52,11 @@ def api_products():
 
     if name == 'DHC':
         return [
-            product('06_X_ \u30b3\u30e9\u30fc\u30b1\u3099\u30f3.webp', 'DHC  \u30b3\u30e9\u30fc\u30b1\u3099\u30f3'),
-            product('09_X_\u30de\u30ab.webp', 'DHC  \u30de\u30ab'),
-            product('13_X-B.webp', 'DHC-B'),
-            product('59_X-C.webp', 'DHC-C'),
-            product('33_X-D.webp', 'DHC-D'),
+            product('006_X_ \u30b3\u30e9\u30fc\u30b1\u3099\u30f3.webp', 'DHC'),
+            product('009_X_\u30de\u30ab.webp', 'DHC'),
+            product('013_X-B.webp', 'DHC'),
+            product('059_X-C.webp', 'DHC'),
+            product('033_X-D.webp', 'DHC'),
         ]
 
     num_items = ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
