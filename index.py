@@ -70,10 +70,6 @@ def api_products():
     if len(query) < 3:
         return []
 
-    num_items = ord(query[0]) - ord('a') + 1 # A=1 B=2 etc
-    if num_items < 1 or num_items > 26:
-        return []
-
     supermatch = None
     for item in files:
         if item.keyword in query:
@@ -83,17 +79,24 @@ def api_products():
     else:
         brand = query
                 
+    num_items = ord(brand[0]) - ord('a') + 1 # A=1 B=2 etc
+    if num_items < 1 or num_items > 26:
+        return []
+    
     if brand == 'dhc':
         catalog = [files[f] for f in [12, 58, 32, 5, 8]]
     else:
         catalog = files[:]
+        print('BRAND', brand)
         random.seed(int.from_bytes(hashlib.md5(brand.encode()).digest()))
         random.shuffle(catalog)
         catalog = catalog[:num_items]
 
     brand = brand.title() if len(brand) > 3 else brand.upper()
     if supermatch is not None:
+        print('seper', supermatch)
         for item in catalog:
+            print(item)
             if item == supermatch:
                 return [product(brand, supermatch)]
 
