@@ -39,7 +39,6 @@ def product(brand, item):
         },
     }
 
-
 def hydrate(filename, brand):
     return filename[4:].split('.')[0] \
         .replace('X', brand) \
@@ -47,7 +46,6 @@ def hydrate(filename, brand):
         .replace('~' + brand, brand.lower()) \
         .replace(brand + '~', brand.title()) \
         .replace('_', ' ')
-
 
 def image_info(filename):
     with Image.open(product_images_dir / filename) as image:
@@ -71,27 +69,37 @@ def api_products():
     query = query.strip().lower().replace('-', ' ')
     if len(query) < 3:
         return []
-        
-    brand = query.title() if len(query) > 3 else query.upper()
-    if brand == 'DHC':
-        return [product('DHC', files[i]) for i in [12, 58, 32, 5, 8]]
 
-    num_items = ord(brand[0]) - ord('A') + 1 # A=1 B=2 etc
+    num_items = ord(query[0]) - ord('a') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
 
-    catalog = files[:]
-    random.seed(int.from_bytes(hashlib.md5(query.encode()).digest()))
-    random.shuffle(catalog)
-    catalog = catalog[:num_items]
-
-    for item in catalog:
+    supermatch = None
+    for item in files:
         if item.keyword in query:
-            return [product(item)]
+            supermatch = item
+            brand = query.replace(supermatch.keyword, '')
+            break
+    else:
+        brand = query
+                
+    if brand == 'dhc':
+        catalog = [files[f] for f in [12, 58, 32, 5, 8]]
+    else:
+        catalog = files[:]
+        random.seed(int.from_bytes(hashlib.md5(brand.encode()).digest()))
+        random.shuffle(catalog)
+        catalog = catalog[:num_items]
+
+    brand = brand.title() if len(brand) > 3 else brand.upper()
+    if supermatch is not None:
+        for item in catalog:
+            if item == supermatch:
+                return [product(brand, supermatch)]
 
     if ' ' in query:
         return []
     
     products = [product(brand, item) for item in catalog]
-    products.sort(key=lambda product: product['name'])
+    products.sort(key=lambda p: p['name'])
     return products
