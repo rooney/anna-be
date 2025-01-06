@@ -52,7 +52,6 @@ def pattern_from(filename):
     scrub = filename.strip().replace('-', ' ').replace('(', '').replace(')', '')
     pattern = hydrate(scrub, '(regex)').lower().replace('(regex)', regex)
     if '~' in filename:
-        print(pattern)
         pattern = [part for part in pattern.split(' ') if regex in part][0]
 
     return re.compile(pattern)
