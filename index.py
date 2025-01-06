@@ -1,4 +1,4 @@
-import random, os, hashlib
+import hashlib, os, random, re
 from flask import Flask, request
 from flask_cors import CORS
 from pathlib import Path
@@ -47,17 +47,47 @@ def hydrate(filename, brand):
         .replace(brand + '~', brand.title()) \
         .replace('_', ' ')
 
+def pattern_from(filename):
+    regex = '(\\S+)'
+    scrub = filename.strip().replace('-', ' ').replace('(', '').replace(')', '')
+    pattern = hydrate(scrub, '(regex)').lower().replace('(regex)', regex)
+    if '~' in filename:
+        print(pattern)
+        pattern = [part for part in pattern.split(' ') if regex in part][0]
+
+    return re.compile(pattern)
+
 def image_info(filename):
     with Image.open(product_images_dir / filename) as image:
         width, height = image.size
         return SimpleNamespace(
             filename=filename,
             relpath=product_images_relpath + filename,
-            keyword=hydrate(filename, brand='').lower().replace('-', ' '),
+            pattern=pattern_from(filename),
             width=width,
             height=height,
         )
 files = [image_info(f) for f in files]
+
+
+def catalog_for(brand):
+    if brand == 'dhc':
+        return [files[f] for f in [12, 58, 32, 5, 8]]
+
+    if len(brand) < 3:
+        return []
+
+    if ' ' in brand:
+        return []
+
+    num_items = ord(brand[0]) - ord('a') + 1 # A=1 B=2 etc
+    if num_items < 1 or num_items > 26:
+        return []
+
+    catalog = files[:]
+    random.seed(int.from_bytes(hashlib.md5(brand.encode()).digest()))
+    random.shuffle(catalog)
+    return catalog[:num_items]
 
 
 @app.route('/api/products/')
@@ -67,42 +97,21 @@ def api_products():
         return []
 
     query = query.strip().lower().replace('-', ' ')
-    if len(query) < 3:
-        return []
+    brand = query
+    reverse_matches = set([])
+    if len(query) > 3:
+        for f in files:
+            found = f.pattern.search(query)
+            if found:
+                brand = found.group(1)
+                reverse_matches.add(f.filename)
 
-    supermatch = None
-    for item in files:
-        if item.keyword in query:
-            supermatch = item
-            brand = query.replace(supermatch.keyword, '')
-            break
-    else:
-        brand = query
-                
-    num_items = ord(brand[0]) - ord('a') + 1 # A=1 B=2 etc
-    if num_items < 1 or num_items > 26:
+    catalog = catalog_for(brand)
+    matches = [item for item in catalog if item.filename in reverse_matches]
+    if not matches and brand != query:
         return []
-    
-    if brand == 'dhc':
-        catalog = [files[f] for f in [12, 58, 32, 5, 8]]
-    else:
-        catalog = files[:]
-        print('BRAND', brand)
-        random.seed(int.from_bytes(hashlib.md5(brand.encode()).digest()))
-        random.shuffle(catalog)
-        catalog = catalog[:num_items]
 
     brand = brand.title() if len(brand) > 3 else brand.upper()
-    if supermatch is not None:
-        print('seper', supermatch)
-        for item in catalog:
-            print(item)
-            if item == supermatch:
-                return [product(brand, supermatch)]
-
-    if ' ' in query:
-        return []
-    
-    products = [product(brand, item) for item in catalog]
+    products = [product(brand, item) for item in matches or catalog]
     products.sort(key=lambda p: p['name'])
     return products
