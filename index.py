@@ -3,6 +3,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from pathlib import Path
 from PIL import Image
+from types import SimpleNamespace
 from urllib.parse import urlparse
 
 app = Flask(__name__)
@@ -20,74 +21,77 @@ CORS(app, resources={
 
 static_dir = Path(app.static_folder)
 product_images_dir = static_dir / 'products'
-relpath = static_dir.name + '/products/'
+product_images_relpath = static_dir.name + '/products/'
+files = [f for f in os.listdir(product_images_dir)
+    if os.path.isfile(os.path.join(product_images_dir, f))
+    and not f.startswith('.')
+]
+files.sort()
 
 
-def unfilename(filename, name):
+def product(brand, item):
+    return {
+        'name' : hydrate(item.filename, brand),
+        'image' : {
+            'src' : item.relpath,
+            'width' : item.width,
+            'height' : item.height,
+        },
+    }
+
+
+def hydrate(filename, brand):
     return filename[4:].split('.')[0] \
-        .replace('X', name) \
-        .replace('~' + name + '~', name.lower()) \
-        .replace('~' + name, name.lower()) \
-        .replace(name + '~', name.title()) \
+        .replace('X', brand) \
+        .replace('~' + brand + '~', brand.lower()) \
+        .replace('~' + brand, brand.lower()) \
+        .replace(brand + '~', brand.title()) \
         .replace('_', ' ')
 
 
-def brandify(name):
-    return name.title() if len(name) > 3 else name.upper()
-
-
-def product(image_filename, product_name):
-    with Image.open(product_images_dir / image_filename) as image:
+def image_info(filename):
+    with Image.open(product_images_dir / filename) as image:
         width, height = image.size
-        return {
-            'name' : unfilename(image_filename, product_name),
-            'image' : relpath + image_filename,
-            'width': width,
-            'height': height,
-        }
+        return SimpleNamespace(
+            filename=filename,
+            relpath=product_images_relpath + filename,
+            keyword=hydrate(filename, brand='').lower().replace('-', ' '),
+            width=width,
+            height=height,
+        )
+files = [image_info(f) for f in files]
+
 
 @app.route('/api/products/')
 def api_products():
     query = request.args.get('q')
-    if not query or len(query) < 3:
+    if not query:
         return []
 
-    query = query.strip()
-    name = brandify(query)
+    query = query.strip().lower().replace('-', ' ')
+    if len(query) < 3:
+        return []
+        
+    brand = query.title() if len(query) > 3 else query.upper()
+    if brand == 'DHC':
+        return [product('DHC', files[i]) for i in [12, 58, 32, 5, 8]]
 
-    if name == 'DHC':
-        return [
-            product('006_X_ \u30b3\u30e9\u30fc\u30b1\u3099\u30f3.webp', 'DHC'),
-            product('009_X_\u30de\u30ab.webp', 'DHC'),
-            product('013_X-B.webp', 'DHC'),
-            product('059_X-C.webp', 'DHC'),
-            product('033_X-D.webp', 'DHC'),
-        ]
-
-    num_items = ord(name[0]) - ord('A') + 1 # A=1 B=2 etc
+    num_items = ord(brand[0]) - ord('A') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
 
-    files = [f for f in os.listdir(product_images_dir)
-        if os.path.isfile(os.path.join(product_images_dir, f))
-        and not f.startswith('.')
-    ]
-    files.sort()
+    catalog = files[:]
+    random.seed(int.from_bytes(hashlib.md5(query.encode()).digest()))
+    random.shuffle(catalog)
+    catalog = catalog[:num_items]
 
-    haystack = name.lower().replace('-', ' ')
-    for f in files:
-        needle = unfilename(f, '').lower().replace('-', ' ')
-        if needle in haystack:
-            return [product(f, brandify(haystack.replace(needle, '').strip()))]
+    for item in catalog:
+        if item.keyword in query:
+            return [product(item)]
 
-    if ' ' in haystack:
+    if ' ' in query:
         return []
-
-    hash = hashlib.md5(query.encode()).digest()
-    seed = int.from_bytes(hash)
-    random.seed(seed)
-    random.shuffle(files)
-
-    products = [product(f, name) for f in files[:num_items]]
+    
+    products = [product(brand, item) for item in catalog]
     products.sort(key=lambda product: product['name'])
     return products
