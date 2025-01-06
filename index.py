@@ -1,8 +1,9 @@
 import random, os, hashlib
 from flask import Flask, request
 from flask_cors import CORS
-from urllib.parse import urlparse
 from pathlib import Path
+from PIL import Image
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 
@@ -36,10 +37,14 @@ def brandify(name):
 
 
 def product(image_filename, product_name):
-    return {
-        'name' : unfilename(image_filename, product_name),
-        'image' : relpath + image_filename,
-    }
+    with Image.open(product_images_dir / image_filename) as image:
+        width, height = image.size
+        return {
+            'name' : unfilename(image_filename, product_name),
+            'image' : relpath + image_filename,
+            'width': width,
+            'height': height,
+        }
 
 @app.route('/api/products/')
 def api_products():
@@ -74,7 +79,7 @@ def api_products():
         needle = unfilename(f, '').lower().replace('-', ' ')
         if needle in haystack:
             return [product(f, brandify(haystack.replace(needle, '').strip()))]
-        
+
     if ' ' in haystack:
         return []
 
