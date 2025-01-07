@@ -89,12 +89,7 @@ def catalog_for(brand):
     return catalog[:num_items]
 
 
-@app.route('/api/products/')
-def api_products():
-    query = request.args.get('q')
-    if not query:
-        return []
-
+def lookup(query):
     query = query.strip().lower().replace('-', ' ')
     brand = query
     reverse_matches = set([])
@@ -113,4 +108,17 @@ def api_products():
     brand = brand.title() if len(brand) > 3 else brand.upper()
     products = [product(brand, item) for item in matches or catalog]
     products.sort(key=lambda p: p['name'])
+    return products
+
+@app.route('/api/products/')
+def api_products():
+    query = request.args.get('q')
+    if not query:
+        return []
+
+    products = lookup(query)
+    if not products and ' ' in query:
+        products = [item for part in query.split(' ') for item in lookup(part) if query in item['name'].lower().replace('-', ' ')]
+        print([p['name'] for p in products])
+        
     return products
