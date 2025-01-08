@@ -22,23 +22,11 @@ CORS(app, resources={
 static_dir = Path(app.static_folder)
 product_images_dir = static_dir / 'products'
 product_images_relpath = static_dir.name + '/products/'
-imagefiles = [f for f in os.listdir(product_images_dir)
+image_files = [f for f in os.listdir(product_images_dir)
     if os.path.isfile(os.path.join(product_images_dir, f))
     and not f.startswith('.')
 ]
-imagefiles.sort()
-
-def image_info(filename):
-    with Image.open(product_images_dir / filename) as image:
-        width, height = image.size
-        return SimpleNamespace(
-            filename=filename,
-            relpath=product_images_relpath + filename,
-            regex=regexify(filename),
-            width=width,
-            height=height,
-        )
-imagefiles = map(image_info, imagefiles)
+image_files.sort()
 
 
 def product(brand, item):
@@ -59,7 +47,11 @@ def denoise(string):
 def tagify(string):
     return denoise(string).lower()
 
+def wordify(string):
+    return tagify(string).replace(' ', '')
+
 def brandify(filename, brand):
+    brand = brand.title() if len(brand) > 3 else brand.upper()
     return filename[4:].split('.')[0] \
         .replace('X', brand) \
         .replace('~' + brand + '~', brand.lower()) \
@@ -68,15 +60,29 @@ def brandify(filename, brand):
         .replace('_', ' ')
 
 def regexify(filename):
-    regex = '(\\S+)'
+    regex = '(.+)'
     pattern = brandify(denoise(filename), '(regex)').lower().replace('(regex)', regex)
     if '~' in filename:
         pattern = [part for part in pattern.split(' ') if regex in part][0]
     return re.compile(pattern)
 
+
+def image_info(filename):
+    with Image.open(product_images_dir / filename) as image:
+        width, height = image.size
+        return SimpleNamespace(
+            filename=filename,
+            relpath=product_images_relpath + filename,
+            regex=regexify(filename),
+            width=width,
+            height=height,
+        )
+image_files = [image_info(file) for file in image_files]
+
+
 def catalog_for(brand):
-    if brand == 'DHC':
-        return [imagefiles[f] for f in [12, 58, 32, 5, 8]]
+    if brand == 'dhc':
+        return [product('DHC', image_files[i]) for i in [12, 58, 32, 5, 8]]
 
     if len(brand) < 3:
         return []
@@ -84,46 +90,46 @@ def catalog_for(brand):
     if ' ' in brand:
         return []
 
-    num_items = ord(brand[0]) - ord('A') + 1 # A=1 B=2 etc
+    num_items = ord(brand[0]) - ord('a') + 1 # A=1 B=2 etc
     if num_items < 1 or num_items > 26:
         return []
 
-    catalog = imagefiles[:]
+    catalog = image_files[:]
     random.seed(int.from_bytes(hashlib.md5(brand.encode()).digest()))
     random.shuffle(catalog)
-    return catalog[:num_items]
+    return [product(brand, item) for item in catalog[:num_items]]
+
+
+def subs_of(string):
+    max_length = len(string)
+    for length in range(3, max_length):
+        for i in range(max_length - length + 1):
+            yield string[i:(i + length)]
+
 
 def lookup(query):
-    query = tagify(query)
-    brand = query
-    reverse_matches = set([])
-    if len(query) > 3:
-        for f in imagefiles:
-            found = f.regex.search(query)
-            if found:
-                reverse_matches.add(f.filename)
-                capture = found.group(1)
-                if len(capture) < len(brand):
-                    brand = capture
+    worded = wordify(query)
+    part = re.compile(query.replace(' ', '.*'))
+    full = re.compile(r'\b' + query + r'\b')
 
-    brand = brand.title() if len(brand) > 3 else brand.upper()
-    catalog = catalog_for(brand)
-    matches = [item for item in catalog if item.filename in reverse_matches]
-    products = [product(brand, item) for item in matches or catalog]
-    fullmatches = [item for item in products if query in item['tags']]
-    if fullmatches:
-        return fullmatches
+    if (len(worded) < 3):
+        return []
+    
+    if len(worded) == 3:
+        return catalog_for(worded)
 
-    if ' ' in query:
-        parts = query.split(' ')
-        regex = '.*'.join(parts)
-        already_found = set([item['name'] for item in products])
-        related = [item for part in parts for item in lookup(part)
-            if re.search(regex, item['tags'])
-            and item['name'] not in already_found
-        ]
-        products.extend(related)
-    return products
+    for brand in subs_of(worded):
+        catalog = catalog_for(brand)
+
+        full_matches = [item for item in catalog if full.search(item['tags'])]
+        if full_matches:
+            return full_matches
+        
+        part_matches = [item for item in catalog if part.search(wordify(item['tags']))]
+        if part_matches:
+            return part_matches
+    
+    return catalog_for(query)
 
 
 @app.route('/api/products/')
