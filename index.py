@@ -51,8 +51,13 @@ def wordify(string):
     return tagify(string).replace(' ', '')
 
 def brandify(filename, brand):
+    filename = filename[4:].split('.')[0] # remove the three-digit number and file extension
+    unicode_escapes = re.search(r'\[(.+)\]', filename)
+    if unicode_escapes:
+        replacement = ''.join(chr(int(hexcode, 16)) for hexcode in unicode_escapes.group(1).split(','))
+        filename = filename.replace(unicode_escapes.group(), replacement)
     brand = brand.title() if len(brand) > 3 else brand.upper()
-    return filename[4:].split('.')[0] \
+    return filename \
         .replace('X', brand) \
         .replace('~' + brand + '~', brand.lower()) \
         .replace('~' + brand, brand.lower()) \
