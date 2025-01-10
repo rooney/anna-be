@@ -87,7 +87,7 @@ image_files = [image_info(file) for file in image_files]
 
 def catalog_for(brand):
     if brand == 'dhc':
-        return [product('DHC', image_files[i]) for i in [12, 58, 32, 5, 8]]
+        return [product('DHC', image_files[i]) for i in [5, 8, 12, 32, 37, 58]]
 
     if len(brand) < 3:
         return []
