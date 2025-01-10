@@ -143,7 +143,7 @@ def api_products():
     if not query:
         return []
 
-    products = lookup(query.strip())
+    products = lookup(query.strip().lower())
     products.sort(key=lambda item: item['name'])
     return products
 
